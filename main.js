@@ -10,6 +10,10 @@ let player;
 let playerX = 1000; //Startlokation, så man ikke kan se den dårlige del af parallaxen
 let playerY = 500; //niveauet af banen
 let cameraX = 0;
+let worldStartX;
+let worldEndX;
+let gameState = "start";
+let animalsDisturbed = 0;
 
 // Noise
 let noiseLevel; //Collective noise
@@ -29,27 +33,11 @@ let deerThreshold = 22;
 let foxThreshold = 30;
 
 //Spawn Points for animals
-//We use arrays to store the locations so it is easier to manage, and we use lastspawnTime, to manually adjust it, for some fucking reason
-let birdSpawns = [
-  { x: 200, y: 400, lastSpawnTime: 0},
-  { x: 600, y: 400, lastSpawnTime: 0},
-  { x: 1300, y: 400, lastSpawnTime: 0}
-];
-
-let owlSpawns = [
-  { x: 200, y: 400, lastSpawnTime: 0}
-];
-let deerSpawns = [
-  { x: 400, y: 500, lastSpawnTime: 0},
-  { x: 1000, y: 500, lastSpawnTime: 0},
-  { x: 1600, y: 500, lastSpawnTime: 0}
-];
-
-let foxSpawns = [
-  { x: 400, y: 500, lastSpawnTime: 0},
-  { x: 1000, y: 500, lastSpawnTime: 0},
-  { x: 1600, y: 500, lastSpawnTime: 0}
-];
+//Vi bruger arrays til at gemme spawn-punkterne, så de er nemmere at styre.
+let birdSpawns = [];
+let owlSpawns = [];
+let deerSpawns = [];
+let foxSpawns = [];
 
 //Speed of animal movement on each axis, defined later per spawned object so it's only one variable
 let vx = 0; 
@@ -155,6 +143,10 @@ function preload() {
 function setup() {
   createCanvas(displayWidth, displayHeight);
 
+  worldStartX = playerX;
+  worldEndX = bg2.width - 200;
+  createSpawnPoints();
+
   //Controlmenu colors and position
   goldC = color(118, 93, 26);
   brownC = color(40, 25, 20);
@@ -170,15 +162,29 @@ function setup() {
 function draw() {
   background(220);
 
+  if (gameState === "playing") {
+    player.update();
+    clampPlayerToBounds();
+
+    if (playerX >= worldEndX) {
+      playerX = worldEndX;
+      gameState = "end";
+    }
+  }
+  
+  //Kamerabevægelse
+  cameraX = playerX - displayWidth / 2; 
+  if (cameraX < 0) {
+    cameraX = 0;
+  }
+
   //Background
   image(bg3, -cameraX * 0.2, 0); // furthest back, slowest
   image(bg2, -cameraX * 0.5, 0); // middle
   image(bg1, -cameraX * 1.0, 0); // front, fastest
+  image(bg1, -cameraX * 1.0 + bg1.width, 0); // forreste lag igen, rykket mod højre
 
   musicStateDisplay();
-  
-  //Camera movement
-  cameraX = playerX - displayWidth / 2; 
 
   //Calculates the noise we use for our spawning logic
   //Problems with music noise being NAN so we use ?? on them so that if our left value
@@ -201,7 +207,6 @@ function draw() {
   );
 }
 
-  player.update();
   player.display();
 
 
@@ -392,6 +397,14 @@ function draw() {
       if (f1.frame >= fox.frames.length) f1.frame = 0;
     }
   }
+if (gameState === "start") {
+  drawStartScreen();
+}
+
+if (gameState === "end") {
+  drawEndScreen();
+}
+
 previousPlayerX = playerX;
 };
 
@@ -400,9 +413,97 @@ previousPlayerX = playerX;
 /// Functions
 ///////////////////
 
+function clampPlayerToBounds() {
+  if (playerX < worldStartX) {
+    playerX = worldStartX;
+  }
+
+  if (playerX > worldEndX) {
+    playerX = worldEndX;
+  }
+}
+
+function createSpawnPoints() {
+  birdSpawns = [];
+  owlSpawns = [];
+  deerSpawns = [];
+  foxSpawns = [];
+
+  let spacing = 450;
+  let spawnNumber = 0;
+
+  for (let x = worldStartX + 250; x < worldEndX; x += spacing) {
+    birdSpawns.push({ x: x, y: playerY - 100, lastSpawnTime: 0 });
+    deerSpawns.push({ x: x + 150, y: playerY, lastSpawnTime: 0 });
+    foxSpawns.push({ x: x + 300, y: playerY, lastSpawnTime: 0 });
+
+    if (spawnNumber % 2 === 0) {
+      owlSpawns.push({ x: x + 100, y: playerY - 100, lastSpawnTime: 0 });
+    }
+
+    spawnNumber++;
+  }
+}
+
+function drawStartScreen() {
+  push();
+  fill(0, 0, 0, 160);
+  rect(0, 0, displayWidth, displayHeight);
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(16);
+  text(
+    "Left/Right arrows: move\n" +
+    "Shift: run\n" +
+    "M: motorbike\n" +
+    "X: play/pause music\n" +
+    "C: skip song\n\n" +
+    "Press Enter or Space to start",
+    displayWidth / 2,
+    displayHeight * 0.5
+  );
+  pop();
+}
+
+function drawEndScreen() {
+  push();
+  fill(0, 0, 0, 160);
+  rect(0, 0, displayWidth, displayHeight);
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  text("End", displayWidth / 2, displayHeight * 0.3);
+
+  textSize(16);
+  text(
+    "You disturbed " + animalsDisturbed + " animals in the forest.\n\n" +
+    "Press R to restart",
+    displayWidth / 2,
+    displayHeight * 0.5
+  );
+  pop();
+}
+
+function resetGame() {
+  playerX = worldStartX;
+  cameraX = playerX - displayWidth / 2;
+  previousPlayerX = playerX;
+  animalsDisturbed = 0;
+
+  birdsRight = [];
+  birdsLeft = [];
+  owls = [];
+  deersRight = [];
+  deersLeft = [];
+  foxesRight = [];
+  foxesLeft = [];
+}
+
 function spawnBirdsLeft(x, y) {
   // random number of birds (1–10) 
-  let amount = random(1, 4);
+  let amount = floor(random(1, 4));
     
   birdsStartled.play(); //Plays sound once only
     //Controls position and speed of our birds
@@ -415,11 +516,12 @@ function spawnBirdsLeft(x, y) {
       frame: 0
      })
     };
+  animalsDisturbed += amount;
 };
 
 function spawnBirdsRight(x, y) {
   // random number of birds (1–10) 
-  let amount = random(1, 4);
+  let amount = floor(random(1, 4));
     
   birdsStartled.play();
     //Controls position and speed of our birds
@@ -432,11 +534,12 @@ function spawnBirdsRight(x, y) {
       frame: 0
      })
     };
+  animalsDisturbed += amount;
 };
 
 function spawnOwl(x, y) {
   // random number of birds (1–10) 
-  let amount = random(1, 2);
+  let amount = floor(random(1, 2));
     
   owlStartled.play();
     //Controls position and speed of our birds
@@ -455,10 +558,11 @@ function spawnOwl(x, y) {
       frame: 0
      })
     };
+  animalsDisturbed += amount;
 };
 
 function spawnDeerLeft(x, y) {
-  let amount = random(1, 3);
+  let amount = floor(random(1, 3));
 
   deerRun.play();
     for (let i = 0; i < amount; i++) {
@@ -469,10 +573,11 @@ function spawnDeerLeft(x, y) {
         frame: 0 //Makes it so each deer tracks it's own animation
       });
     };
+  animalsDisturbed += amount;
 };
 
 function spawnDeerRight(x, y) {
-  let amount = random(1, 3);
+  let amount = floor(random(1, 3));
 
   deerRun.play();
     for (let i = 0; i < amount; i++) {
@@ -483,6 +588,7 @@ function spawnDeerRight(x, y) {
         frame: 0 //Makes it so each deer tracks it's own animation
       });
     };
+  animalsDisturbed += amount;
 };
 
 function spawnFoxesRight(x, y) {
@@ -497,6 +603,7 @@ function spawnFoxesRight(x, y) {
         frame: 0 //Makes it so each deer tracks it's own animation
       });
     };
+  animalsDisturbed += amount;
 };
 
 function spawnFoxesLeft(x, y) {
@@ -511,10 +618,21 @@ function spawnFoxesLeft(x, y) {
         frame: 0 //Makes it so each deer tracks it's own animation
       });
     };
+  animalsDisturbed += amount;
 };
 
 
 function keyPressed() {
+    if (gameState === "start" && (keyCode === ENTER || keyCode === 32)) {
+        gameState = "playing";
+        return;
+    }
+
+    if (gameState === "end" && keyCode === 82) {
+        resetGame();
+        gameState = "playing";
+        return;
+    }
 
      // Play and pause, 88 is KC for X
     if (keyCode === 88) {
