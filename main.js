@@ -119,7 +119,7 @@ function preload() {
   bird.loadAssets();
   
   //Music
-  song1 = createAudio("./Assets/Music/ICan'tExplain.mp3");
+  song1 = createAudio("./Assets/Music/ICan_tExplain.mp3");
   song2 = createAudio("./Assets/Music/135.mp3");
   song3 = createAudio("./Assets/Music/Chicago.mp3");
   song4 = createAudio("./Assets/Music/EmotionlessThoughts.mp3");
