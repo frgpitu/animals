@@ -12,15 +12,12 @@ class Player {
     this.isRunning = false;
     this.isBiking = false;
     this.isFacingLeft = false;
+    this.motorToggleDown = false;
 
     // Animation Containers
     this.walkFrames = [];
     this.runFrames = [];
     this.bikeFrames = [];
-
-    this.wasMoving = false;
-    this.wasRunning = false;
-    this.wasBiking = false;
   }
 
   // Run this in the global preload()
@@ -36,18 +33,22 @@ class Player {
 
     // 2. Check for Running (Shift Key)
     let speed = this.walkSpeed;
-    if(keyIsDown(77)){ //77 is keycode for 'm'
-        this.isBiking = true;
-        speed = this.motorSpeed;
-        this.isRunning = false;
-        motorNoise = 45;
-        
+    if (keyIsDown(77) && !this.motorToggleDown) { //77 is keycode for 'm'
+      this.isBiking = !this.isBiking;
+      this.motorToggleDown = true;
+    } else if (!keyIsDown(77)) {
+      this.motorToggleDown = false;
     }
-    else if (keyIsDown(SHIFT)) {
+
+    if (this.isBiking) {
+      speed = this.motorSpeed;
+      this.isRunning = false;
+      motorNoise = 150;
+    } else if (keyIsDown(SHIFT)) {
       this.isRunning = true;
       speed = this.runSpeed;
       this.isBiking = false;
-      runNoise = 18;
+      runNoise = 60;
     } else {
       this.isRunning = false;
       this.isBiking = false;
@@ -62,9 +63,10 @@ class Player {
         //haha
     }
     else if (keyIsDown(LEFT_ARROW)) {
+      this.x = this.x - speed;
       this.isFacingLeft = true;
       this.isMoving = true;
-      walkNoise = 8;
+      walkNoise = 10;
       
     if (this.isBiking) {
       playerX -= 15;
@@ -79,10 +81,10 @@ class Player {
 
     }
     else if (keyIsDown(RIGHT_ARROW)) {
+      this.x = this.x + speed;
       this.isFacingLeft = false;
       this.isMoving = true;
       walkNoise = 10;
-      
     if (this.isBiking) {
       playerX += 15;
     } else {
@@ -98,70 +100,14 @@ class Player {
     } else {
       walkNoise = 0;
     }
-    if (keyIsDown(RIGHT_ARROW && SHIFT)) {
-      walkNoise = 0;
-    }
-
-
-    // Walking
-if (this.isMoving && !this.isRunning && !this.isBiking) {
-  if (!this.wasMoving || this.wasRunning || this.wasBiking) {
-    running.stop();
-    motorbiking.stop();
-
-    if (!walking.isPlaying()) {
-      walking.setVolume(0.2);
-      walking.loop();
-    }
-  }
-}
-
-// Running
-else if (this.isMoving && this.isRunning) {
-  if (!this.wasRunning) {
-    walking.stop();
-    motorbiking.stop();
-
-    if (!running.isPlaying()) {
-      running.setVolume(0.9);
-      running.loop();
-    }
-  }
-}
-
-// Biking
-else if (this.isMoving && this.isBiking) {
-  if (!this.wasBiking) {
-    walking.stop();
-    running.stop();
-
-    if (!motorbiking.isPlaying()) {
-      motorbiking.setVolume(0.5);
-      motorbiking.loop();
-    }
-  }
-}
-
-// Idle
-else {
-  walking.stop();
-  running.stop();
-  motorbiking.stop();
-}
-
-// Save previous state
-this.wasMoving = this.isMoving;
-this.wasRunning = this.isRunning;
-this.wasBiking = this.isBiking;
   }
 
   display() {
     // --- Step 1: Pick the right set of images ---
     let currentAnimation;
-    if(this.isBiking && this.isMoving){
-        currentAnimation = this.bikeFrames;
-    }
-    else if (this.isRunning && this.isMoving) {
+    if (this.isBiking) {
+      currentAnimation = this.bikeFrames;
+    } else if (this.isRunning && this.isMoving) {
       currentAnimation = this.runFrames;
     } else {
       currentAnimation = this.walkFrames;
@@ -192,13 +138,9 @@ this.wasBiking = this.isBiking;
     translate(this.x, this.y);
     imageMode(CENTER);
 
-    if(this.isBiking && this.isMoving)
-    {
-        this.isFacingLeft = !this.isFacingLeft;
-    }
-
-    // Flip the image if facing left
-    if (this.isFacingLeft) {
+    // Flip the image if facing left (bike sprites are mirrored)
+    const shouldFlip = this.isBiking ? !this.isFacingLeft : this.isFacingLeft;
+    if (shouldFlip) {
       scale(-1, 1);
     }
 
